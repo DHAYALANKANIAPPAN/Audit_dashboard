@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const { PrismaClient } = require('@prisma/client');
+const authRouter = require('./modules/auth/routes');
 
 dotenv.config();
 
@@ -27,6 +28,9 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Authentication Router
+app.use('/api/auth', authRouter);
+
 // Checklist Endpoint (Dhaya's shared contract: GET /api/checklists?auditType=)
 app.get('/api/checklists', async (req, res) => {
   try {
@@ -48,8 +52,11 @@ app.use((req, res) => {
 
 // Global Error Handler
 app.use((err, req, res, next) => {
-  console.error('[Unhandled Error]:', err);
-  res.status(err.status || 500).json({
+  const status = err.status || 500;
+  if (status >= 500) {
+    console.error('[Unhandled Server Error]:', err);
+  }
+  res.status(status).json({
     error: err.message || 'Internal Server Error',
   });
 });

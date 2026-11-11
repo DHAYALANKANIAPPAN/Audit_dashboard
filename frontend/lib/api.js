@@ -6,8 +6,52 @@
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
+export function getStoredToken() {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('auditpulse_token');
+}
+
+export function getStoredUser() {
+  if (typeof window === 'undefined') return null;
+  const userStr = localStorage.getItem('auditpulse_user');
+  if (!userStr) return null;
+  try {
+    return JSON.parse(userStr);
+  } catch {
+    return null;
+  }
+}
+
+export function setSession(token, user) {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem('auditpulse_token', token);
+  localStorage.setItem('auditpulse_user', JSON.stringify(user));
+}
+
+export function clearSession() {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem('auditpulse_token');
+  localStorage.removeItem('auditpulse_user');
+}
+
+export async function login(email, password) {
+  const res = await fetch(`${API_BASE_URL}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || 'Login failed');
+  }
+
+  setSession(data.token, data.user);
+  return data;
+}
+
 export async function fetchApi(endpoint, options = {}) {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  const token = getStoredToken();
 
   const headers = {
     'Content-Type': 'application/json',
@@ -15,7 +59,6 @@ export async function fetchApi(endpoint, options = {}) {
     ...(options.headers || {}),
   };
 
-  // If payload is FormData, do not set Content-Type header manually
   if (options.body instanceof FormData) {
     delete headers['Content-Type'];
   }
@@ -37,7 +80,6 @@ export async function fetchApi(endpoint, options = {}) {
   } catch (err) {
     console.warn(`[API] Request failed for ${url}. Attempting mock fallback...`, err.message);
 
-    // Fallback handler for mock data in development/offline
     if (typeof window !== 'undefined') {
       const mockResult = getMockFallback(endpoint);
       if (mockResult !== null) {
@@ -52,14 +94,14 @@ export async function fetchApi(endpoint, options = {}) {
 function getMockFallback(endpoint) {
   if (endpoint.includes('/checklists')) {
     return [
-      { id: 'ck-1', auditType: 'PRODUCT', itemText: 'Verify component dimensions meet engineering tolerance spec', order: 1 },
-      { id: 'ck-2', auditType: 'PRODUCT', itemText: 'Check surface finish and paint adhesion per ASTM D3359', order: 2 },
-      { id: 'ck-3', auditType: 'PRODUCT', itemText: 'Verify barcode readability with optical verification scan', order: 3 },
-      { id: 'ck-4', auditType: 'PRODUCT', itemText: 'Ensure torque check on primary fasteners per assembly sheet', order: 4 },
-      { id: 'ck-5', auditType: 'PRODUCT', itemText: 'Check electrical ground continuity < 0.1 ohm', order: 5 },
-      { id: 'ck-6', auditType: 'PRODUCT', itemText: 'Verify packaging integrity and vibration cushioning', order: 6 },
-      { id: 'ck-7', auditType: 'PRODUCT', itemText: 'Confirm safety labelling and serial number placement', order: 7 },
-      { id: 'ck-8', auditType: 'PRODUCT', itemText: 'Check cleanliness and particulate contamination count', order: 8 },
+      { id: 'ck-1', auditType: 'PRODUCT', section: 'Dimensional', itemText: 'Verify critical dimensions and mounting clearances against engineering drawing', order: 1 },
+      { id: 'ck-2', auditType: 'PRODUCT', section: 'Fasteners', itemText: 'Check torque specifications on all load-bearing bolts and fasteners using calibrated tool', order: 2 },
+      { id: 'ck-3', auditType: 'PRODUCT', section: 'Traceability', itemText: 'Confirm 2D DataMatrix / barcode readability and serial number label alignment', order: 3 },
+      { id: 'ck-4', auditType: 'PRODUCT', section: 'Surface Quality', itemText: 'Check surface finish, paint thickness, and verify absence of scratches, dents, or burrs', order: 4 },
+      { id: 'ck-5', auditType: 'PRODUCT', section: 'Electrical', itemText: 'Inspect wiring harness routing, tie-wrap security, and pin insertion depth', order: 5 },
+      { id: 'ck-6', auditType: 'PRODUCT', section: 'Functional', itemText: 'Verify sub-assembly switch operation, latch engagement, and tactile feedback', order: 6 },
+      { id: 'ck-7', auditType: 'PRODUCT', section: 'Contamination', itemText: 'Ensure component cleanliness and absence of foreign particulate (FOD)', order: 7 },
+      { id: 'ck-8', auditType: 'PRODUCT', section: 'Packaging', itemText: 'Inspect protective foam fitment, moisture barrier bag, and shipping crate tagging', order: 8 },
     ];
   }
 
@@ -72,9 +114,9 @@ function getMockFallback(endpoint) {
         status: 'PLANNED',
         plan: {
           auditType: 'PRODUCT',
-          line: { name: 'Line 1 - Chassis' },
-          product: 'Model-X Frame',
-          department: { name: 'Assembly' },
+          line: { name: 'Line 1 - Chassis & Frame' },
+          product: 'EV Chassis Subframe',
+          department: { name: 'Manufacturing' },
         },
       },
     ];
