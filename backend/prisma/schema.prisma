@@ -1,0 +1,286 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  AUDITOR
+  AUDITEE
+  AUDIT_HEAD
+  PLANT_MANAGER
+  ADMIN
+}
+
+enum AuditType {
+  PRODUCT
+  REVALIDATION
+}
+
+enum Shift {
+  A
+  B
+  C
+}
+
+enum ScheduleStatus {
+  PLANNED
+  IN_PROGRESS
+  DONE
+  MISSED
+}
+
+enum ItemResult {
+  PASS
+  FAIL
+}
+
+enum Severity {
+  MINOR
+  MAJOR
+  CRITICAL
+}
+
+enum NcStatus {
+  OPEN
+  IN_PROGRESS
+  SUBMITTED
+  VERIFIED
+  CLOSED
+}
+
+enum RootCauseMethod {
+  FIVE_WHY
+  EIGHT_D
+}
+
+enum ApprovalStage {
+  AUDITOR_VERIFY
+  HEAD_SIGNOFF
+}
+
+enum ApprovalDecision {
+  ACCEPT
+  REJECT
+}
+
+enum NotificationChannel {
+  INAPP
+  EMAIL
+  SMS
+}
+
+model User {
+  id           String        @id @default(uuid())
+  email        String        @unique
+  passwordHash String
+  name         String
+  role         Role
+  departmentId String?
+  department   Department?   @relation(fields: [departmentId], references: [id])
+  ownedLines   Line[]        @relation("LineOwner")
+  schedules    Schedule[]    @relation("AuditorSchedules")
+  assignedNcs  NC[]          @relation("AuditeeNcs")
+  capas        Capa[]        @relation("CapaOwner")
+  approvals    Approval[]    @relation("UserApprovals")
+  notifications Notification[]
+  evidence     Evidence[]    @relation("UserEvidence")
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@index([role])
+}
+
+model Department {
+  id         String      @id @default(uuid())
+  name       String      @unique
+  code       String      @unique
+  users      User[]
+  lines      Line[]
+  auditPlans AuditPlan[]
+  createdAt  DateTime    @default(now())
+}
+
+model Line {
+  id           String      @id @default(uuid())
+  name         String      @unique
+  code         String      @unique
+  departmentId String
+  department   Department  @relation(fields: [departmentId], references: [id])
+  ownerId      String
+  owner        User        @relation("LineOwner", fields: [ownerId], references: [id])
+  auditPlans   AuditPlan[]
+  ncs          NC[]
+  createdAt    DateTime    @default(now())
+
+  @@index([ownerId])
+}
+
+model AuditPlan {
+  id           String      @id @default(uuid())
+  month        String      // Format: "YYYY-MM"
+  auditType    AuditType
+  lineId       String
+  line         Line        @relation(fields: [lineId], references: [id])
+  departmentId String
+  department   Department  @relation(fields: [departmentId], references: [id])
+  product      String
+  plannedDate  DateTime
+  shift        Shift
+  schedules    Schedule[]
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@index([month, shift])
+  @@index([plannedDate])
+}
+
+model Schedule {
+  id          String         @id @default(uuid())
+  planId      String
+  plan        AuditPlan      @relation(fields: [planId], references: [id], onDelete: Cascade)
+  auditorId   String
+  auditor     User           @relation("AuditorSchedules", fields: [auditorId], references: [id])
+  date        DateTime
+  shift       Shift
+  status      ScheduleStatus @default(PLANNED)
+  inspection  Inspection?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([date, shift, auditorId])
+  @@index([status])
+}
+
+model ChecklistItem {
+  id              String           @id @default(uuid())
+  auditType       AuditType
+  section         String?
+  itemText        String
+  order           Int              @default(0)
+  inspectionItems InspectionItem[]
+  ncs             NC[]
+  createdAt       DateTime         @default(now())
+
+  @@index([auditType, order])
+}
+
+model Inspection {
+  id          String           @id @default(uuid())
+  scheduleId  String           @unique
+  schedule    Schedule         @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  submittedAt DateTime         @default(now())
+  items       InspectionItem[]
+  ncs         NC[]
+  createdAt   DateTime         @default(now())
+}
+
+model InspectionItem {
+  id              String        @id @default(uuid())
+  inspectionId    String
+  inspection      Inspection    @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+  checklistItemId String
+  checklistItem   ChecklistItem @relation(fields: [checklistItemId], references: [id])
+  result          ItemResult
+  severity        Severity?
+  remark          String?
+  evidence        Evidence[]    @relation("InspectionItemEvidence")
+  createdAt       DateTime      @default(now())
+
+  @@index([inspectionId])
+  @@index([result])
+}
+
+model NC {
+  id              String        @id @default(uuid())
+  ncNo            String        @unique // e.g. "NC-2026-0001"
+  inspectionId    String
+  inspection      Inspection    @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+  checklistItemId String
+  checklistItem   ChecklistItem @relation(fields: [checklistItemId], references: [id])
+  lineId          String
+  line            Line          @relation(fields: [lineId], references: [id])
+  severity        Severity
+  auditeeId       String
+  auditee         User          @relation("AuditeeNcs", fields: [auditeeId], references: [id])
+  status          NcStatus      @default(OPEN)
+  targetDate      DateTime
+  capa            Capa?
+  approvals       Approval[]
+  evidence        Evidence[]    @relation("NcEvidence")
+  createdAt       DateTime      @default(now())
+  closedAt        DateTime?
+  escalatedAt     DateTime?
+  updatedAt       DateTime      @updatedAt
+
+  @@index([status])
+  @@index([auditeeId])
+  @@index([targetDate])
+  @@index([lineId])
+}
+
+model Capa {
+  id              String          @id @default(uuid())
+  ncId            String          @unique
+  nc              NC              @relation(fields: [ncId], references: [id], onDelete: Cascade)
+  rootCauseMethod RootCauseMethod
+  rootCause       String          // 5-Why answers (JSON string or concatenated) or 8D description
+  corrective      String
+  preventive      String
+  ownerId         String
+  owner           User            @relation("CapaOwner", fields: [ownerId], references: [id])
+  targetDate      DateTime
+  evidence        Evidence[]      @relation("CapaEvidence")
+  submittedAt     DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([ownerId])
+}
+
+model Evidence {
+  id               String          @id @default(uuid())
+  fileName         String
+  url              String
+  uploadedById     String
+  uploadedBy       User            @relation("UserEvidence", fields: [uploadedById], references: [id])
+  inspectionItemId String?
+  inspectionItem   InspectionItem? @relation("InspectionItemEvidence", fields: [inspectionItemId], references: [id], onDelete: SetNull)
+  ncId             String?
+  nc               NC?             @relation("NcEvidence", fields: [ncId], references: [id], onDelete: SetNull)
+  capaId           String?
+  capa             Capa?           @relation("CapaEvidence", fields: [capaId], references: [id], onDelete: SetNull)
+  createdAt        DateTime        @default(now())
+
+  @@index([ncId])
+  @@index([capaId])
+}
+
+model Approval {
+  id        String           @id @default(uuid())
+  ncId      String
+  nc        NC               @relation(fields: [ncId], references: [id], onDelete: Cascade)
+  stage     ApprovalStage
+  decision  ApprovalDecision
+  remark    String?
+  byUserId  String
+  byUser    User             @relation("UserApprovals", fields: [byUserId], references: [id])
+  createdAt DateTime         @default(now())
+
+  @@index([ncId, stage])
+}
+
+model Notification {
+  id        String              @id @default(uuid())
+  userId    String
+  user      User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  channel   NotificationChannel @default(INAPP)
+  title     String
+  body      String
+  read      Boolean             @default(false)
+  createdAt DateTime            @default(now())
+
+  @@index([userId, read])
+}

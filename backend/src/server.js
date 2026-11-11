@@ -1,10 +1,12 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const { PrismaClient } = require('@prisma/client');
 
 dotenv.config();
 
 const app = express();
+const prisma = new PrismaClient();
 const PORT = process.env.PORT || 5000;
 
 // Middleware
@@ -23,6 +25,20 @@ app.get('/api/health', (req, res) => {
     service: 'AuditPulse 360 Backend API',
     timestamp: new Date().toISOString(),
   });
+});
+
+// Checklist Endpoint (Dhaya's shared contract: GET /api/checklists?auditType=)
+app.get('/api/checklists', async (req, res) => {
+  try {
+    const { auditType } = req.query;
+    const items = await prisma.checklistItem.findMany({
+      where: auditType ? { auditType: auditType.toUpperCase() } : undefined,
+      orderBy: { order: 'asc' },
+    });
+    res.json(items);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Fallback 404 handler
