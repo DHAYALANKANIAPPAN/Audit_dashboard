@@ -1,0 +1,54 @@
+{
+  "completion": {
+    "planned": 40,
+    "executed": 36,
+    "percent": 90.0,
+    "byLine": [
+      { "line": "Line 1 - Chassis", "planned": 14, "executed": 13, "percent": 92.8 },
+      { "line": "Line 2 - Powertrain", "planned": 14, "executed": 13, "percent": 92.8 },
+      { "line": "Line 3 - Final Assembly", "planned": 12, "executed": 10, "percent": 83.3 }
+    ],
+    "byShift": [
+      { "shift": "A", "planned": 15, "executed": 14 },
+      { "shift": "B", "planned": 15, "executed": 13 },
+      { "shift": "C", "planned": 10, "executed": 9 }
+    ],
+    "byDepartment": [
+      { "department": "Manufacturing", "planned": 24, "executed": 22 },
+      { "department": "Quality Assurance", "planned": 16, "executed": 14 }
+    ]
+  },
+  "nc": {
+    "open": 8,
+    "inProgress": 5,
+    "overdue": 3,
+    "closed": 14,
+    "total": 27
+  },
+  "onTimeClosure": {
+    "closedOnTime": 12,
+    "totalClosed": 14,
+    "percent": 85.7
+  },
+  "mttcDays": 4.2,
+  "aging": {
+    "lt7": 6,
+    "d7to15": 4,
+    "d15to30": 2,
+    "gt30": 1
+  },
+  "pendingApprovals": {
+    "verification": 3,
+    "headSignoff": 2
+  },
+  "auditorWorkload": [
+    { "auditor": "Dhaya (Lead)", "planned": 14, "done": 13 },
+    { "auditor": "Bhava (Shopfloor)", "planned": 13, "done": 12 },
+    { "auditor": "Linga (Quality)", "planned": 13, "done": 11 }
+  ],
+  "recurringFailures": [
+    { "item": "Fastener Torque Check", "line": "Line 1 - Chassis", "count": 5 },
+    { "item": "Barcode Readability", "line": "Line 3 - Final Assembly", "count": 4 },
+    { "item": "Surface Finish Spec", "line": "Line 2 - Powertrain", "count": 3 }
+  ]
+}
