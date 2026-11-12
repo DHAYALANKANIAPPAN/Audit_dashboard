@@ -4,6 +4,7 @@ const dotenv = require('dotenv');
 const { PrismaClient } = require('@prisma/client');
 const authRouter = require('./modules/auth/routes');
 const plansRouter = require('./modules/plans/routes');
+const rosterRouter = require('./modules/roster/routes');
 
 dotenv.config();
 
@@ -34,6 +35,10 @@ app.use('/api/auth', authRouter);
 
 // Audit Plans Router
 app.use('/api/plans', plansRouter);
+
+// Roster & Schedules Routers
+app.use('/api/roster', rosterRouter);
+app.use('/api/schedules', rosterRouter);
 
 // Checklist Endpoint (Dhaya's shared contract: GET /api/checklists?auditType=)
 app.get('/api/checklists', async (req, res) => {
