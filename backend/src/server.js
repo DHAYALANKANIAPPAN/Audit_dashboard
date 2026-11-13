@@ -5,6 +5,7 @@ const { PrismaClient } = require('@prisma/client');
 const authRouter = require('./modules/auth/routes');
 const plansRouter = require('./modules/plans/routes');
 const rosterRouter = require('./modules/roster/routes');
+const evidenceRouter = require('./modules/evidence/routes');
 
 dotenv.config();
 
@@ -19,6 +20,7 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use('/api/evidence', evidenceRouter);
 
 // Health Check Endpoint
 app.get('/api/health', (req, res) => {
