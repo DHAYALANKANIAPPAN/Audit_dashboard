@@ -259,3 +259,30 @@ export async function uploadEvidence(formData) {
     };
   }
 }
+
+/**
+ * Fetch audit history with search and filtering (GET /api/history)
+ */
+export async function getAuditHistory(params = {}) {
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([key, val]) => {
+    if (val !== undefined && val !== null && val !== '') {
+      query.append(key, val);
+    }
+  });
+  return await apiFetch(`/history?${query.toString()}`);
+}
+
+/**
+ * Fetch end-to-end 6-stage lifecycle timeline for an audit schedule (GET /api/history/:scheduleId)
+ */
+export async function getAuditTimeline(scheduleId) {
+  return await apiFetch(`/history/${scheduleId}`);
+}
+
+/**
+ * Fetch timeline starting from an NC ticket number or ID (GET /api/history/nc/:ncIdOrNo)
+ */
+export async function getNcTimeline(ncIdOrNo) {
+  return await apiFetch(`/history/nc/${ncIdOrNo}`);
+}
