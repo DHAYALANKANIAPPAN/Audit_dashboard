@@ -256,3 +256,6 @@ export async function uploadEvidence(formData) {
     };
   }
 }
+
+// Alias for Dhaya's planning and calendar modules
+export const fetchApi = apiFetch;

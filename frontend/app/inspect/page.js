@@ -205,7 +205,7 @@ export default function InspectListPage() {
               <Calendar className="w-3.5 h-3.5" />
               <span>Today: {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
             </div>
-            <h2 className="text-xl sm:text-2xl font-bold">Today's Assigned Audits</h2>
+            <h2 className="text-xl sm:text-2xl font-bold">Today&apos;s Assigned Audits</h2>
             <p className="text-xs sm:text-sm text-indigo-100 mt-1">
               Complete assigned shop-floor audits on time. Works 100% offline in dead zones.
             </p>
@@ -255,7 +255,7 @@ export default function InspectListPage() {
         {/* Audit Cards List */}
         {loading ? (
           <div className="py-12 bg-white rounded-2xl border border-slate-200">
-            <Spinner size="lg" label="Loading today's assigned audits..." />
+            <Spinner size="lg" label="Loading today&apos;s assigned audits..." />
           </div>
         ) : filtered.length === 0 ? (
           <div className="bg-white rounded-2xl border border-dashed border-slate-300 p-10 text-center space-y-3">
