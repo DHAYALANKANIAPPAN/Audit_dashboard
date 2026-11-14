@@ -1,3 +1,4 @@
+import ServiceWorkerRegister from '../components/common/ServiceWorkerRegister';
 import localFont from "next/font/local";
 import "./globals.css";
 import AppLayout from "@/components/common/AppLayout";
@@ -23,7 +24,8 @@ export default function RootLayout({ children }) {
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-slate-950 text-slate-100`}>
         <AppLayout>
-          {children}
+          <ServiceWorkerRegister />
+        {children}
         </AppLayout>
       </body>
     </html>

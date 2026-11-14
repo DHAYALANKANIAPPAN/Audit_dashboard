@@ -1,0 +1,38 @@
+[
+  {
+    "id": "sched-101",
+    "planId": "plan-01",
+    "auditorId": "usr-bhava",
+    "date": "2026-11-13",
+    "shift": "A",
+    "status": "PLANNED",
+    "auditType": "PRODUCT",
+    "line": "Line 1 - Engine Assembly",
+    "department": "Assembly",
+    "product": "V6 Turbo Engine Block"
+  },
+  {
+    "id": "sched-102",
+    "planId": "plan-02",
+    "auditorId": "usr-bhava",
+    "date": "2026-11-13",
+    "shift": "B",
+    "status": "IN_PROGRESS",
+    "auditType": "REVALIDATION",
+    "line": "Line 3 - Paint & Coating",
+    "department": "Paint",
+    "product": "Chassis Primer Coating"
+  },
+  {
+    "id": "sched-103",
+    "planId": "plan-03",
+    "auditorId": "usr-bhava",
+    "date": "2026-11-13",
+    "shift": "C",
+    "status": "DONE",
+    "auditType": "PRODUCT",
+    "line": "Line 2 - Transmission",
+    "department": "Machining",
+    "product": "Gearbox Housing Casing"
+  }
+]
