@@ -205,7 +205,7 @@ export default function InspectListPage() {
               <Calendar className="w-3.5 h-3.5" />
               <span>Today: {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
             </div>
-            <h2 className="text-xl sm:text-2xl font-bold">Today's Assigned Audits</h2>
+            <h2 className="text-xl sm:text-2xl font-bold">Today&apos;s Assigned Audits</h2>
             <p className="text-xs sm:text-sm text-indigo-100 mt-1">
               Complete assigned shop-floor audits on time. Works 100% offline in dead zones.
             </p>
