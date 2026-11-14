@@ -76,6 +76,9 @@ export async function apiFetch(endpoint, options = {}) {
   }
 }
 
+export const fetchApi = apiFetch;
+
+
 /**
  * Fetch assigned audits for current auditor (GET /api/schedules/mine)
  */
