@@ -286,3 +286,41 @@ export async function getAuditTimeline(scheduleId) {
 export async function getNcTimeline(ncIdOrNo) {
   return await apiFetch(`/history/nc/${ncIdOrNo}`);
 }
+
+/**
+ * Get export URL for PDF or Excel reports (GET /api/reports/export/:format)
+ */
+export function getReportExportUrl(format = 'excel', filters = {}) {
+  const query = new URLSearchParams();
+  Object.entries(filters).forEach(([k, v]) => {
+    if (v !== undefined && v !== null && v !== '') {
+      query.append(k, v);
+    }
+  });
+  return `${API_BASE_URL}/reports/export/${format}?${query.toString()}`;
+}
+
+/**
+ * Download report directly as blob
+ */
+export async function downloadReport(format = 'excel', filters = {}) {
+  const url = getReportExportUrl(format, filters);
+  const token = getStoredToken();
+  const res = await fetch(url, {
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+  if (!res.ok) throw new Error(`Export failed: ${res.statusText}`);
+  const blob = await res.blob();
+  const downloadUrl = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = downloadUrl;
+  const ext = format === 'excel' ? 'xlsx' : 'pdf';
+  const dateStr = new Date().toISOString().split('T')[0];
+  a.download = `AuditPulse360_Report_${dateStr}.${ext}`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.URL.revokeObjectURL(downloadUrl);
+}
