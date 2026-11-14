@@ -10,6 +10,8 @@ const evidenceRoutes = require('./modules/evidence/routes');
 const analyticsRouter = require('./modules/analytics/routes');
 const historyRouter = require('./modules/history/routes');
 const reportsRouter = require('./modules/reports/routes');
+const ncRouter = require('./modules/nc/routes');
+const approvalsRouter = require('./modules/approvals/routes');
 
 dotenv.config();
 
@@ -49,6 +51,8 @@ app.use('/api/evidence', evidenceRoutes);
 app.use('/api/analytics', analyticsRouter);
 app.use('/api/history', historyRouter);
 app.use('/api/reports', reportsRouter);
+app.use('/api/ncs', ncRouter);
+app.use('/api/approvals', approvalsRouter);
 
 // Checklist Endpoint (Dhaya's shared contract: GET /api/checklists?auditType=)
 app.get('/api/checklists', async (req, res) => {

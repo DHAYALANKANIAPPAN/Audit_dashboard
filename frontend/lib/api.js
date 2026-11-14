@@ -324,3 +324,50 @@ export async function downloadReport(format = 'excel', filters = {}) {
   a.remove();
   window.URL.revokeObjectURL(downloadUrl);
 }
+
+/**
+ * List NC tickets (GET /api/ncs)
+ */
+export async function getNcs(params = {}) {
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => {
+    if (v !== undefined && v !== null && v !== '') {
+      query.append(k, v);
+    }
+  });
+  return await apiFetch(`/ncs?${query.toString()}`);
+}
+
+/**
+ * Get NC details (GET /api/ncs/:id)
+ */
+export async function getNc(id) {
+  return await apiFetch(`/ncs/${id}`);
+}
+
+/**
+ * Submit CAPA for an NC ticket (POST /api/ncs/:id/capa)
+ */
+export async function submitCapa(ncId, data) {
+  return await apiFetch(`/ncs/${ncId}/capa`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+/**
+ * Get pending approvals grouped by Tier 1 and Tier 2 (GET /api/approvals/pending)
+ */
+export async function getPendingApprovals() {
+  return await apiFetch('/approvals/pending');
+}
+
+/**
+ * Submit approval decision (POST /api/approvals/:ncId/decide)
+ */
+export async function decideApproval(ncId, data) {
+  return await apiFetch(`/approvals/${ncId}/decide`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
