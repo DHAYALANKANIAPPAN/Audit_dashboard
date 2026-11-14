@@ -3,6 +3,7 @@
  * Automatically attaches Authorization header if JWT token is stored in localStorage.
  * Provides fallback to mock data when backend is not reachable.
  */
+import { MOCK_SCHEDULES, MOCK_CHECKLISTS } from './mockData';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
@@ -43,84 +44,215 @@ export async function login(email, password) {
 
   const data = await res.json();
   if (!res.ok) {
-    throw new Error(data.error || 'Login failed');
+    throw new Error(data.error || 'Authentication failed');
   }
 
   setSession(data.token, data.user);
   return data;
 }
 
-export async function fetchApi(endpoint, options = {}) {
+export async function apiFetch(endpoint, options = {}) {
   const token = getStoredToken();
-
   const headers = {
     'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...(options.headers || {}),
   };
 
-  if (options.body instanceof FormData) {
-    delete headers['Content-Type'];
-  }
-
-  const url = `${API_BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+  const url = `${API_BASE_URL}${endpoint}`;
 
   try {
-    const res = await fetch(url, {
-      ...options,
-      headers,
-    });
+    const res = await fetch(url, { ...options, headers });
+    const data = await res.json();
 
     if (!res.ok) {
-      const errorData = await res.json().catch(() => ({}));
-      throw new Error(errorData.error || `HTTP error! status: ${res.status}`);
+      throw new Error(data.error || `HTTP ${res.status}`);
     }
 
-    return await res.json();
+    return data;
   } catch (err) {
     console.warn(`[API] Request failed for ${url}. Attempting mock fallback...`, err.message);
-
-    if (typeof window !== 'undefined') {
-      const mockResult = getMockFallback(endpoint);
-      if (mockResult !== null) {
-        return mockResult;
-      }
-    }
-
     throw err;
   }
 }
 
-function getMockFallback(endpoint) {
-  if (endpoint.includes('/checklists')) {
-    return [
-      { id: 'ck-1', auditType: 'PRODUCT', section: 'Dimensional', itemText: 'Verify critical dimensions and mounting clearances against engineering drawing', order: 1 },
-      { id: 'ck-2', auditType: 'PRODUCT', section: 'Fasteners', itemText: 'Check torque specifications on all load-bearing bolts and fasteners using calibrated tool', order: 2 },
-      { id: 'ck-3', auditType: 'PRODUCT', section: 'Traceability', itemText: 'Confirm 2D DataMatrix / barcode readability and serial number label alignment', order: 3 },
-      { id: 'ck-4', auditType: 'PRODUCT', section: 'Surface Quality', itemText: 'Check surface finish, paint thickness, and verify absence of scratches, dents, or burrs', order: 4 },
-      { id: 'ck-5', auditType: 'PRODUCT', section: 'Electrical', itemText: 'Inspect wiring harness routing, tie-wrap security, and pin insertion depth', order: 5 },
-      { id: 'ck-6', auditType: 'PRODUCT', section: 'Functional', itemText: 'Verify sub-assembly switch operation, latch engagement, and tactile feedback', order: 6 },
-      { id: 'ck-7', auditType: 'PRODUCT', section: 'Contamination', itemText: 'Ensure component cleanliness and absence of foreign particulate (FOD)', order: 7 },
-      { id: 'ck-8', auditType: 'PRODUCT', section: 'Packaging', itemText: 'Inspect protective foam fitment, moisture barrier bag, and shipping crate tagging', order: 8 },
-    ];
+/**
+ * Fetch assigned audits for current auditor (GET /api/schedules/mine)
+ */
+export async function getMySchedules() {
+  try {
+    const res = await fetch(`${API_BASE_URL}/schedules/mine`, {
+      headers: {
+        'Authorization': `Bearer ${getStoredToken() || 'mock-token'}`
+      }
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    console.warn('[AuditPulse 360] Fallback to mock data for getMySchedules:', err.message);
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('auditpulse_schedules');
+      if (stored) return JSON.parse(stored);
+      localStorage.setItem('auditpulse_schedules', JSON.stringify(MOCK_SCHEDULES));
+    }
+    return MOCK_SCHEDULES;
   }
+}
 
-  if (endpoint.includes('/schedules/mine')) {
-    return [
-      {
-        id: 'sch-demo-1',
-        date: new Date().toISOString().split('T')[0],
-        shift: 'A',
-        status: 'PLANNED',
-        plan: {
-          auditType: 'PRODUCT',
-          line: { name: 'Line 1 - Chassis & Frame' },
-          product: 'EV Chassis Subframe',
-          department: { name: 'Manufacturing' },
-        },
+/**
+ * Fetch checklist items for an audit type (GET /api/checklists?auditType=)
+ */
+export async function getChecklist(auditType = 'PRODUCT') {
+  try {
+    const res = await fetch(`${API_BASE_URL}/checklists?auditType=${encodeURIComponent(auditType)}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    console.warn(`[AuditPulse 360] Fallback to mock data for getChecklist(${auditType})`);
+    return MOCK_CHECKLISTS[auditType] || MOCK_CHECKLISTS.PRODUCT;
+  }
+}
+
+/**
+ * Start an audit schedule (PATCH /api/schedules/:id/start)
+ */
+export async function startSchedule(scheduleId) {
+  try {
+    const res = await fetch(`${API_BASE_URL}/schedules/${scheduleId}/start`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${getStoredToken() || 'mock-token'}`
+      }
+    });
+    if (!res.ok && res.status !== 409) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    console.warn('[AuditPulse 360] Fallback startSchedule:', err.message);
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('auditpulse_schedules');
+      if (stored) {
+        const list = JSON.parse(stored);
+        const item = list.find((s) => s.id === scheduleId);
+        if (item) {
+          item.status = 'IN_PROGRESS';
+          localStorage.setItem('auditpulse_schedules', JSON.stringify(list));
+        }
+      }
+    }
+    return { success: true, scheduleId, status: 'IN_PROGRESS' };
+  }
+}
+
+/**
+ * Submit completed inspection (POST /api/inspections)
+ */
+export async function submitInspection(inspectionPayload) {
+  const payloadWithClientId = {
+    clientId:
+      inspectionPayload.clientId ||
+      (typeof crypto !== 'undefined' && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `client-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`),
+    scheduleId: inspectionPayload.scheduleId,
+    items: inspectionPayload.items.map((it) => ({
+      checklistItemId: it.checklistItemId,
+      result: it.result,
+      severity: it.result === 'FAIL' ? it.severity : null,
+      remark: it.result === 'FAIL' ? (it.remark || '').trim() : '',
+      evidenceIds: it.evidenceIds || []
+    }))
+  };
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/inspections`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${getStoredToken() || 'mock-token'}`
       },
-    ];
-  }
+      body: JSON.stringify(payloadWithClientId)
+    });
 
-  return null;
+    if (!res.ok) {
+      const errorJson = await res.json().catch(() => null);
+      const errMsg = errorJson?.error?.message || `HTTP ${res.status}`;
+      const err = new Error(errMsg);
+      err.details = errorJson?.error?.details;
+      throw err;
+    }
+
+    return await res.json();
+  } catch (err) {
+    console.warn('[AuditPulse 360] Fallback submitInspection:', err.message);
+
+    const failedItems = payloadWithClientId.items.filter((i) => i.result === 'FAIL');
+    const simulatedNcs = failedItems.map((item, idx) => ({
+      id: `nc-mock-${Date.now()}-${idx}`,
+      ncNo: `NC-2026-${String(100 + idx).padStart(4, '0')}`,
+      inspectionId: `insp-mock-${Date.now()}`,
+      checklistItemId: item.checklistItemId,
+      severity: item.severity,
+      remark: item.remark,
+      evidenceIds: item.evidenceIds || [],
+      status: 'OPEN',
+      targetDate: new Date(
+        Date.now() + (item.severity === 'CRITICAL' ? 2 : item.severity === 'MAJOR' ? 7 : 14) * 86400000
+      )
+        .toISOString()
+        .split('T')[0]
+    }));
+
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('auditpulse_schedules');
+      if (stored) {
+        const list = JSON.parse(stored);
+        const item = list.find((s) => s.id === payloadWithClientId.scheduleId);
+        if (item) {
+          item.status = 'DONE';
+          localStorage.setItem('auditpulse_schedules', JSON.stringify(list));
+        }
+      }
+    }
+
+    return {
+      success: true,
+      isDuplicate: false,
+      inspection: {
+        id: `insp-mock-${Date.now()}`,
+        scheduleId: payloadWithClientId.scheduleId,
+        submittedAt: new Date().toISOString()
+      },
+      ncs: simulatedNcs,
+      ncCount: simulatedNcs.length
+    };
+  }
+}
+
+/**
+ * Upload evidence photo (POST /api/evidence)
+ */
+export async function uploadEvidence(formData) {
+  try {
+    const res = await fetch(`${API_BASE_URL}/evidence`, {
+      method: 'POST',
+      body: formData
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    console.warn('[AuditPulse 360] Fallback stub uploadEvidence:', err.message);
+    await new Promise((r) => setTimeout(r, 400));
+
+    const file = formData.get('file');
+    const stubUuid = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 9);
+    const localUrl = file ? URL.createObjectURL(file) : 'https://placehold.co/400x300/e2e8f0/475569?text=Defect+Evidence';
+
+    return {
+      id: `stub-${stubUuid}`,
+      fileName: file ? file.name : `evidence-${stubUuid}.jpg`,
+      url: localUrl,
+      createdAt: new Date().toISOString()
+    };
+  }
 }
