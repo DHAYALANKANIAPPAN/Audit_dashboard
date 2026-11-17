@@ -2,11 +2,12 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import AppLayout from '@/components/common/AppLayout';
-import { getNcs, submitCapa } from '@/lib/api';
+import { getNcs, submitCapa, startNc, uploadEvidence, getStoredUser } from '@/lib/api';
 
 export default function NCsPage() {
   const [loading, setLoading] = useState(true);
   const [ncs, setNcs] = useState([]);
+  const [currentUser, setCurrentUser] = useState(null);
   const [activeTab, setActiveTab] = useState('ALL'); // ALL, OPEN, SUBMITTED, OVERDUE, CLOSED
   const [severityFilter, setSeverityFilter] = useState('');
   const [lineFilter, setLineFilter] = useState('');
@@ -16,6 +17,10 @@ export default function NCsPage() {
   const [selectedNc, setSelectedNc] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [submittingCapa, setSubmittingCapa] = useState(false);
+  const [startingNcId, setStartingNcId] = useState(null);
+  const [evidenceFile, setEvidenceFile] = useState('');
+  const [uploadedEvidenceId, setUploadedEvidenceId] = useState(null);
+  const [uploadingEvidence, setUploadingEvidence] = useState(false);
   const [why1, setWhy1] = useState('');
   const [why2, setWhy2] = useState('');
   const [why3, setWhy3] = useState('');
@@ -24,6 +29,10 @@ export default function NCsPage() {
   const [corrective, setCorrective] = useState('');
   const [preventive, setPreventive] = useState('');
   const [capaTargetDate, setCapaTargetDate] = useState('');
+
+  useEffect(() => {
+    setCurrentUser(getStoredUser());
+  }, []);
 
   const loadNcs = useCallback(async () => {
     setLoading(true);
@@ -56,6 +65,8 @@ export default function NCsPage() {
   const handleOpenCapaModal = (nc) => {
     setSelectedNc(nc);
     setModalOpen(true);
+    setEvidenceFile('');
+    setUploadedEvidenceId(null);
     // Prefill if existing CAPA
     if (nc.capa) {
       try {
@@ -90,6 +101,39 @@ export default function NCsPage() {
   const handleCloseCapaModal = () => {
     setModalOpen(false);
     setSelectedNc(null);
+    setEvidenceFile('');
+    setUploadedEvidenceId(null);
+  };
+
+  const handleStartNc = async (ncId) => {
+    setStartingNcId(ncId);
+    try {
+      await startNc(ncId);
+      loadNcs();
+    } catch (err) {
+      alert(`Failed to start NC: ${err.message}`);
+    } finally {
+      setStartingNcId(null);
+    }
+  };
+
+  const handleEvidenceUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingEvidence(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await uploadEvidence(formData);
+      if (res?.id) {
+        setUploadedEvidenceId(res.id);
+        setEvidenceFile(file.name);
+      }
+    } catch (err) {
+      alert(`Evidence upload failed: ${err.message}`);
+    } finally {
+      setUploadingEvidence(false);
+    }
   };
 
   const handleSubmitCapa = async (e) => {
@@ -110,6 +154,7 @@ export default function NCsPage() {
         corrective,
         preventive,
         targetDate: capaTargetDate,
+        evidenceIds: uploadedEvidenceId ? [uploadedEvidenceId] : [],
       });
       alert(`CAPA for ${selectedNc.ncNo} successfully submitted for Tier 1 Auditor Verification!`);
       handleCloseCapaModal();
@@ -302,7 +347,16 @@ export default function NCsPage() {
                         </span>
                       </td>
 
-                      <td className="px-4 py-3.5 whitespace-nowrap text-right text-xs">
+                      <td className="px-4 py-3.5 whitespace-nowrap text-right text-xs space-x-2">
+                        {nc.status === 'OPEN' && (currentUser?.role === 'AUDITEE' || currentUser?.role === 'ADMIN') && (
+                          <button
+                            onClick={() => handleStartNc(nc.id)}
+                            disabled={startingNcId === nc.id}
+                            className="px-2.5 py-1 text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-md border border-blue-200 transition disabled:opacity-50"
+                          >
+                            {startingNcId === nc.id ? 'Starting...' : 'Start Work'}
+                          </button>
+                        )}
                         {nc.status !== 'CLOSED' ? (
                           <button
                             onClick={() => handleOpenCapaModal(nc)}
@@ -432,6 +486,26 @@ export default function NCsPage() {
                     required
                     className="px-3 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none"
                   />
+                </div>
+
+                {/* Evidence Attachment (Optional) */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider mb-1">
+                    Photo Evidence / Countermeasure Attachment (Optional):
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/*,application/pdf"
+                    onChange={handleEvidenceUpload}
+                    disabled={uploadingEvidence}
+                    className="block w-full text-xs text-slate-500 file:mr-2 file:py-1 file:px-2.5 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100"
+                  />
+                  {uploadingEvidence && (
+                    <p className="text-[11px] text-blue-600 mt-1">Uploading evidence...</p>
+                  )}
+                  {evidenceFile && (
+                    <p className="text-[11px] text-emerald-600 mt-1 font-medium">✓ Attached: {evidenceFile}</p>
+                  )}
                 </div>
 
                 <div className="flex items-center justify-end space-x-2 pt-3 border-t border-slate-100">

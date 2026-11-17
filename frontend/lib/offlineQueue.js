@@ -1,5 +1,5 @@
 import { openDB } from 'idb';
-import { uploadEvidence } from './api';
+import { uploadEvidence, getStoredToken } from './api';
 
 const DB_NAME = 'auditpulse';
 const DB_VERSION = 1;
@@ -40,12 +40,18 @@ export async function enqueueInspection(inspectionData) {
     createdAt: Date.now(),
     status: 'QUEUED', // 'QUEUED' | 'SYNCING' | 'FAILED'
     retryCount: 0,
-    lastError: null
+    lastError: null,
+    uploadedEvidenceMap: {}
   };
 
   await db.put(STORE_NAME, queueEntry);
   console.log('[AuditPulse Offline] Enqueued inspection:', queueEntry.clientId);
   return queueEntry;
+}
+
+async function dbPutQueueEntry(entry) {
+  const db = await getDB();
+  if (db) await db.put(STORE_NAME, entry);
 }
 
 /**
@@ -116,6 +122,12 @@ export async function flushQueue(onSyncCallback) {
     return;
   }
 
+  const token = getStoredToken();
+  if (!token) {
+    console.log('[AuditPulse Offline] No login token; queued inspections remain pending.');
+    return;
+  }
+
   isFlushing = true;
   let syncedCount = 0;
   const errors = [];
@@ -134,11 +146,13 @@ export async function flushQueue(onSyncCallback) {
     for (const entry of queue) {
       try {
         // Step 1: Upload any pending photos for this inspection first
-        const uploadedEvidenceMap = {}; // tempId -> evidenceId
+        // Reuse evidence IDs from earlier attempts to avoid duplicate uploads.
+        entry.uploadedEvidenceMap = entry.uploadedEvidenceMap || {};
+        const uploadedEvidenceMap = entry.uploadedEvidenceMap;
 
         if (entry.photosToUpload && entry.photosToUpload.length > 0) {
           for (const photo of entry.photosToUpload) {
-            if (photo.blob) {
+            if (photo.blob && !uploadedEvidenceMap[photo.tempId]) {
               const formData = new FormData();
               formData.append('file', photo.blob, photo.fileName || 'photo.jpg');
               formData.append('checklistItemId', photo.checklistItemId);
@@ -146,6 +160,7 @@ export async function flushQueue(onSyncCallback) {
               const uploadRes = await uploadEvidence(formData);
               if (uploadRes && uploadRes.id) {
                 uploadedEvidenceMap[photo.tempId] = uploadRes.id;
+                await dbPutQueueEntry(entry);
               }
             }
           }
@@ -176,7 +191,7 @@ export async function flushQueue(onSyncCallback) {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${typeof window !== 'undefined' ? localStorage.getItem('token') || 'mock-token' : ''}`
+            'Authorization': `Bearer ${token}`
           },
           body: JSON.stringify(finalPayload)
         });

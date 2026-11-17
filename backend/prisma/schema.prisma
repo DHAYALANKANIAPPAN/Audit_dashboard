@@ -170,6 +170,7 @@ model ChecklistItem {
 
 model Inspection {
   id          String           @id @default(uuid())
+  clientId    String?          @unique
   scheduleId  String           @unique
   schedule    Schedule         @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
   submittedAt DateTime         @default(now())

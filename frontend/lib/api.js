@@ -151,6 +151,12 @@ export async function startSchedule(scheduleId) {
  * Submit completed inspection (POST /api/inspections)
  */
 export async function submitInspection(inspectionPayload) {
+  const token = getStoredToken();
+
+  if (!token) {
+    throw new Error('Please log in before submitting an inspection.');
+  }
+
   const payloadWithClientId = {
     clientId:
       inspectionPayload.clientId ||
@@ -167,97 +173,55 @@ export async function submitInspection(inspectionPayload) {
     }))
   };
 
-  try {
-    const res = await fetch(`${API_BASE_URL}/inspections`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${getStoredToken() || 'mock-token'}`
-      },
-      body: JSON.stringify(payloadWithClientId)
-    });
+  const res = await fetch(`${API_BASE_URL}/inspections`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify(payloadWithClientId)
+  });
 
-    if (!res.ok) {
-      const errorJson = await res.json().catch(() => null);
-      const errMsg = errorJson?.error?.message || `HTTP ${res.status}`;
-      const err = new Error(errMsg);
-      err.details = errorJson?.error?.details;
-      throw err;
-    }
+  const data = await res.json().catch(() => ({}));
 
-    return await res.json();
-  } catch (err) {
-    console.warn('[AuditPulse 360] Fallback submitInspection:', err.message);
+  if (!res.ok) {
+    const message =
+      typeof data.error === 'string'
+        ? data.error
+        : data.error?.message || `Inspection submission failed (HTTP ${res.status})`;
 
-    const failedItems = payloadWithClientId.items.filter((i) => i.result === 'FAIL');
-    const simulatedNcs = failedItems.map((item, idx) => ({
-      id: `nc-mock-${Date.now()}-${idx}`,
-      ncNo: `NC-2026-${String(100 + idx).padStart(4, '0')}`,
-      inspectionId: `insp-mock-${Date.now()}`,
-      checklistItemId: item.checklistItemId,
-      severity: item.severity,
-      remark: item.remark,
-      evidenceIds: item.evidenceIds || [],
-      status: 'OPEN',
-      targetDate: new Date(
-        Date.now() + (item.severity === 'CRITICAL' ? 2 : item.severity === 'MAJOR' ? 7 : 14) * 86400000
-      )
-        .toISOString()
-        .split('T')[0]
-    }));
-
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('auditpulse_schedules');
-      if (stored) {
-        const list = JSON.parse(stored);
-        const item = list.find((s) => s.id === payloadWithClientId.scheduleId);
-        if (item) {
-          item.status = 'DONE';
-          localStorage.setItem('auditpulse_schedules', JSON.stringify(list));
-        }
-      }
-    }
-
-    return {
-      success: true,
-      isDuplicate: false,
-      inspection: {
-        id: `insp-mock-${Date.now()}`,
-        scheduleId: payloadWithClientId.scheduleId,
-        submittedAt: new Date().toISOString()
-      },
-      ncs: simulatedNcs,
-      ncCount: simulatedNcs.length
-    };
+    const error = new Error(message);
+    error.status = res.status;
+    error.details = data.error?.details;
+    throw error;
   }
+
+  return data;
 }
 
 /**
  * Upload evidence photo (POST /api/evidence)
  */
 export async function uploadEvidence(formData) {
-  try {
-    const res = await fetch(`${API_BASE_URL}/evidence`, {
-      method: 'POST',
-      body: formData
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return await res.json();
-  } catch (err) {
-    console.warn('[AuditPulse 360] Fallback stub uploadEvidence:', err.message);
-    await new Promise((r) => setTimeout(r, 400));
-
-    const file = formData.get('file');
-    const stubUuid = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 9);
-    const localUrl = file ? URL.createObjectURL(file) : 'https://placehold.co/400x300/e2e8f0/475569?text=Defect+Evidence';
-
-    return {
-      id: `stub-${stubUuid}`,
-      fileName: file ? file.name : `evidence-${stubUuid}.jpg`,
-      url: localUrl,
-      createdAt: new Date().toISOString()
-    };
+  const token = getStoredToken();
+  if (!token) {
+    throw new Error('Please log in before uploading evidence.');
   }
+
+  const res = await fetch(`${API_BASE_URL}/evidence`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`
+    },
+    body: formData
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.error || `Evidence upload failed (HTTP ${res.status})`);
+  }
+
+  return data;
 }
 
 /**
@@ -352,6 +316,51 @@ export async function submitCapa(ncId, data) {
   return await apiFetch(`/ncs/${ncId}/capa`, {
     method: 'POST',
     body: JSON.stringify(data),
+  });
+}
+
+/**
+ * Start an NC (PATCH /api/ncs/:id/start)
+ */
+export async function startNc(id) {
+  return await apiFetch(`/ncs/${id}/start`, {
+    method: 'PATCH',
+  });
+}
+
+/**
+ * Auditor verify NC CAPA (POST /api/ncs/:id/verify)
+ */
+export async function verifyNc(id, data) {
+  return await apiFetch(`/ncs/${id}/verify`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+/**
+ * Head sign-off / close NC (POST /api/ncs/:id/close)
+ */
+export async function closeNc(id, data) {
+  return await apiFetch(`/ncs/${id}/close`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+/**
+ * Get user notifications (GET /api/notifications)
+ */
+export async function getNotifications() {
+  return await apiFetch('/notifications');
+}
+
+/**
+ * Mark notification as read (PATCH /api/notifications/:id/read)
+ */
+export async function markNotificationRead(id) {
+  return await apiFetch(`/notifications/${id}/read`, {
+    method: 'PATCH',
   });
 }
 

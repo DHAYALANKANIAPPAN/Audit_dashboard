@@ -2,71 +2,72 @@ const { PrismaClient } = require('@prisma/client');
 
 const prisma = new PrismaClient();
 
-/**
- * Get all pending approvals segregated by Tier 1 (Auditor Verification) and Tier 2 (Quality Head Sign-off)
- */
-async function getPendingApprovals() {
-  // Pending Tier 1: NCs with status 'SUBMITTED' (CAPA submitted, awaiting auditor verification)
-  const tier1Pending = await prisma.nC.findMany({
-    where: {
-      status: 'SUBMITTED',
-    },
-    include: {
-      line: true,
-      auditee: { select: { id: true, name: true, email: true } },
-      checklistItem: true,
-      capa: {
-        include: {
-          owner: { select: { id: true, name: true, email: true } },
-          evidence: true,
-        },
-      },
-      inspection: {
-        include: {
-          schedule: {
-            include: {
-              auditor: { select: { id: true, name: true, email: true } },
-            },
-          },
-        },
-      },
-    },
-    orderBy: { targetDate: 'asc' },
-  });
+const approvalInclude = {
+  byUser: { select: { id: true, name: true, role: true } },
+};
 
-  // Pending Tier 2: NCs with status 'VERIFIED' (Auditor approved, awaiting Audit Head sign-off)
-  const tier2Pending = await prisma.nC.findMany({
-    where: {
-      status: 'VERIFIED',
-    },
-    include: {
-      line: true,
-      auditee: { select: { id: true, name: true, email: true } },
-      checklistItem: true,
-      capa: {
+async function getPendingApprovals({ role, userId } = {}) {
+  const auditorScope = role === 'AUDITOR'
+    ? { inspection: { schedule: { auditorId: userId } } }
+    : {};
+
+  const tier1Pending = role === 'AUDIT_HEAD'
+    ? []
+    : await prisma.nC.findMany({
+        where: { status: 'SUBMITTED', ...auditorScope },
         include: {
-          owner: { select: { id: true, name: true, email: true } },
-          evidence: true,
-        },
-      },
-      approvals: {
-        include: {
-          byUser: { select: { id: true, name: true, role: true } },
-        },
-        orderBy: { createdAt: 'asc' },
-      },
-      inspection: {
-        include: {
-          schedule: {
+          line: true,
+          auditee: { select: { id: true, name: true, email: true } },
+          checklistItem: true,
+          capa: {
             include: {
-              auditor: { select: { id: true, name: true, email: true } },
+              owner: { select: { id: true, name: true, email: true } },
+              evidence: true,
+            },
+          },
+          inspection: {
+            include: {
+              schedule: {
+                include: {
+                  auditor: { select: { id: true, name: true, email: true } },
+                },
+              },
             },
           },
         },
-      },
-    },
-    orderBy: { targetDate: 'asc' },
-  });
+        orderBy: { targetDate: 'asc' },
+      });
+
+  const tier2Pending = role === 'AUDITOR'
+    ? []
+    : await prisma.nC.findMany({
+        where: { status: 'VERIFIED' },
+        include: {
+          line: true,
+          auditee: { select: { id: true, name: true, email: true } },
+          checklistItem: true,
+          capa: {
+            include: {
+              owner: { select: { id: true, name: true, email: true } },
+              evidence: true,
+            },
+          },
+          approvals: {
+            include: approvalInclude,
+            orderBy: { createdAt: 'asc' },
+          },
+          inspection: {
+            include: {
+              schedule: {
+                include: {
+                  auditor: { select: { id: true, name: true, email: true } },
+                },
+              },
+            },
+          },
+        },
+        orderBy: { targetDate: 'asc' },
+      });
 
   return {
     tier1: tier1Pending,
@@ -79,86 +80,108 @@ async function getPendingApprovals() {
   };
 }
 
-/**
- * Submit an approval decision (Tier 1 AUDITOR_VERIFY or Tier 2 HEAD_SIGNOFF)
- */
-async function decideApproval(ncId, { stage, decision, remark, userId }) {
-  const nc = await prisma.nC.findUnique({
-    where: { id: ncId },
-    include: { approvals: true },
-  });
-
-  if (!nc) {
-    throw new Error(`NC ticket '${ncId}' not found.`);
+async function decideApproval(ncId, { stage, decision, remark, userId, userRole }) {
+  if (!userId || !userRole) {
+    throw new Error('Authenticated user is required');
   }
 
-  // Fallback user if userId not provided
-  let effectiveUserId = userId;
-  if (!effectiveUserId) {
-    const defaultUser = await prisma.user.findFirst({
-      where: stage === 'HEAD_SIGNOFF' ? { role: 'AUDIT_HEAD' } : { role: 'AUDITOR' },
+  if (!['ACCEPT', 'REJECT'].includes(decision)) {
+    throw new Error('Decision must be ACCEPT or REJECT');
+  }
+
+  if (decision === 'REJECT' && (!remark || !remark.trim())) {
+    throw new Error('A remark is required when rejecting an NC');
+  }
+
+  const expectedRole = stage === 'AUDITOR_VERIFY'
+    ? 'AUDITOR'
+    : stage === 'HEAD_SIGNOFF'
+      ? 'AUDIT_HEAD'
+      : null;
+
+  if (!expectedRole || userRole !== expectedRole) {
+    throw new Error('You are not authorized for this approval stage');
+  }
+
+  return prisma.$transaction(async (tx) => {
+    const nc = await tx.nC.findUnique({
+      where: { id: ncId },
+      include: { approvals: true },
     });
-    effectiveUserId = defaultUser?.id || 'usr-auditor-1';
-  }
 
-  const approvalStage = stage === 'HEAD_SIGNOFF' ? 'HEAD_SIGNOFF' : 'AUDITOR_VERIFY';
-  const approvalDecision = decision === 'REJECT' ? 'REJECT' : 'ACCEPT';
+    if (!nc) throw new Error(`NC '${ncId}' not found`);
 
-  // 1. Record Approval
-  const approval = await prisma.approval.create({
-    data: {
-      ncId,
-      stage: approvalStage,
-      decision: approvalDecision,
-      remark: remark || (approvalDecision === 'ACCEPT' ? 'Approved & verified on-site.' : 'Rejected. Further action required.'),
-      byUserId: effectiveUserId,
-    },
-    include: {
-      byUser: { select: { id: true, name: true, role: true } },
-    },
-  });
-
-  // 2. Transition NC Status
-  let nextStatus = nc.status;
-  let closedAt = null;
-
-  if (approvalStage === 'AUDITOR_VERIFY') {
-    if (approvalDecision === 'ACCEPT') {
-      nextStatus = 'VERIFIED';
-    } else {
-      nextStatus = 'IN_PROGRESS'; // Send back for correction
+    if (stage === 'AUDITOR_VERIFY' && nc.status !== 'SUBMITTED') {
+      throw new Error('Only SUBMITTED NCs can be verified by an auditor');
     }
-  } else if (approvalStage === 'HEAD_SIGNOFF') {
-    if (approvalDecision === 'ACCEPT') {
-      nextStatus = 'CLOSED';
-      closedAt = new Date();
-    } else {
-      nextStatus = 'SUBMITTED'; // Send back to auditor
-    }
-  }
 
-  const updatedNc = await prisma.nC.update({
-    where: { id: ncId },
-    data: {
-      status: nextStatus,
-      closedAt,
-    },
-    include: {
-      line: true,
-      approvals: {
-        include: { byUser: true },
+    if (stage === 'HEAD_SIGNOFF' && nc.status !== 'VERIFIED') {
+      throw new Error('Only VERIFIED NCs can be signed off by the audit head');
+    }
+
+    if (stage === 'AUDITOR_VERIFY') {
+      const inspection = await tx.inspection.findUnique({
+        where: { id: nc.inspectionId },
+        include: { schedule: true },
+      });
+
+      if (inspection?.schedule?.auditorId !== userId) {
+        throw new Error('Only the auditor who conducted this inspection can verify this NC');
+      }
+    }
+
+    const nextStatus = decision === 'REJECT'
+      ? 'IN_PROGRESS'
+      : stage === 'AUDITOR_VERIFY'
+        ? 'VERIFIED'
+        : 'CLOSED';
+
+    const approval = await tx.approval.create({
+      data: {
+        ncId,
+        stage,
+        decision,
+        remark: remark?.trim() || null,
+        byUserId: userId,
       },
-    },
-  });
+      include: approvalInclude,
+    });
 
-  return {
-    success: true,
-    approval,
-    nc: updatedNc,
-  };
+    const updatedNc = await tx.nC.update({
+      where: { id: ncId },
+      data: {
+        status: nextStatus,
+        closedAt: nextStatus === 'CLOSED' ? new Date() : null,
+      },
+      include: {
+        line: true,
+        auditee: { select: { id: true, name: true, email: true } },
+        approvals: {
+          include: approvalInclude,
+          orderBy: { createdAt: 'asc' },
+        },
+      },
+    });
+
+    await tx.notification.create({
+      data: {
+        userId: nc.auditeeId,
+        channel: 'INAPP',
+        title: decision === 'REJECT'
+          ? `NC ${nc.ncNo} requires further action`
+          : nextStatus === 'CLOSED'
+            ? `NC ${nc.ncNo} closed`
+            : `NC ${nc.ncNo} verified`,
+        body: decision === 'REJECT'
+          ? `Your NC was rejected. Remark: ${remark.trim()}`
+          : nextStatus === 'CLOSED'
+            ? 'The audit head approved and closed this NC.'
+            : 'The auditor verified your CAPA. It is awaiting audit-head sign-off.',
+      },
+    });
+
+    return { success: true, approval, nc: updatedNc };
+  });
 }
 
-module.exports = {
-  getPendingApprovals,
-  decideApproval,
-};
+module.exports = { getPendingApprovals, decideApproval };
