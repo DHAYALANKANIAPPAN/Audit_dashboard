@@ -1,18 +1,15 @@
 const { validateInspectionPayload } = require('./validation');
 const inspectionService = require('./service');
 
-/**
- * Start schedule (PATCH /api/schedules/:id/start)
- */
 async function startSchedule(req, res, next) {
   try {
-    const { id } = req.params;
-    const currentUser = req.user || { id: 'usr-bhava' };
-    const result = inspectionService.startSchedule(id, currentUser);
+    const result = await inspectionService.startSchedule(req.params.id, req.user);
 
     return res.status(200).json({
       success: true,
-      message: result.idempotent ? 'Schedule is already IN_PROGRESS' : 'Schedule started successfully',
+      message: result.idempotent
+        ? 'Schedule is already IN_PROGRESS'
+        : 'Schedule started successfully',
       schedule: result.schedule
     });
   } catch (err) {
@@ -20,12 +17,8 @@ async function startSchedule(req, res, next) {
   }
 }
 
-/**
- * Submit inspection (POST /api/inspections)
- */
 async function createInspection(req, res, next) {
   try {
-    // 1. Zod Validation
     const validationResult = validateInspectionPayload(req.body);
 
     if (!validationResult.success) {
@@ -41,14 +34,12 @@ async function createInspection(req, res, next) {
       });
     }
 
-    // 2. Service execution with atomic schedule completion and Linga NC generation
-    const currentUser = req.user || { id: 'usr-bhava' };
-    const result = inspectionService.createInspection(validationResult.data, currentUser);
+    const result = await inspectionService.createInspection(
+      validationResult.data,
+      req.user
+    );
 
-    // 3. Return 200 for idempotent duplicate clientId, 201 for new creation
-    const statusCode = result.isDuplicate ? 200 : 201;
-
-    return res.status(statusCode).json({
+    return res.status(result.isDuplicate ? 200 : 201).json({
       success: true,
       isDuplicate: result.isDuplicate,
       inspection: result.inspection,
@@ -60,13 +51,9 @@ async function createInspection(req, res, next) {
   }
 }
 
-/**
- * Get inspection by ID (GET /api/inspections/:id)
- */
 async function getInspectionById(req, res, next) {
   try {
-    const { id } = req.params;
-    const inspection = inspectionService.getInspectionById(id);
+    const inspection = await inspectionService.getInspectionById(req.params.id);
 
     return res.status(200).json({
       success: true,
@@ -77,13 +64,9 @@ async function getInspectionById(req, res, next) {
   }
 }
 
-/**
- * Get current auditor's assigned schedules (GET /api/schedules/mine)
- */
 async function getMySchedules(req, res, next) {
   try {
-    const auditorId = req.user?.id || 'usr-bhava';
-    const schedules = inspectionService.getSchedulesByAuditor(auditorId);
+    const schedules = await inspectionService.getSchedulesByAuditor(req.user.id);
     return res.status(200).json(schedules);
   } catch (err) {
     next(err);

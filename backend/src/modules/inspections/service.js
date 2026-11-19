@@ -1,194 +1,215 @@
+const { PrismaClient } = require('@prisma/client');
 const { createNcsFromInspection } = require('../nc/service');
 
-// In-memory data stores
-const inspectionsStore = new Map(); // id -> inspection
-const clientIdIndex = new Map();    // clientId -> { inspection, ncs }
-const schedulesStore = new Map();   // id -> schedule
+const prisma = new PrismaClient();
 
-// Seed initial schedules from data contract
-const INITIAL_SCHEDULES = [
-  {
-    id: 'sched-101',
-    planId: 'plan-01',
-    auditorId: 'usr-bhava',
-    date: new Date().toISOString().split('T')[0],
-    shift: 'A',
-    status: 'PLANNED',
-    auditType: 'PRODUCT',
-    line: 'Line 1 - Engine Assembly',
-    department: 'Assembly',
-    product: 'V6 Turbo Engine Block'
-  },
-  {
-    id: 'sched-102',
-    planId: 'plan-02',
-    auditorId: 'usr-bhava',
-    date: new Date().toISOString().split('T')[0],
-    shift: 'B',
-    status: 'IN_PROGRESS',
-    auditType: 'REVALIDATION',
-    line: 'Line 3 - Paint & Coating',
-    department: 'Paint',
-    product: 'Chassis Primer Coating'
-  },
-  {
-    id: 'sched-103',
-    planId: 'plan-03',
-    auditorId: 'usr-bhava',
-    date: new Date().toISOString().split('T')[0],
-    shift: 'C',
-    status: 'DONE',
-    auditType: 'PRODUCT',
-    line: 'Line 2 - Transmission',
-    department: 'Machining',
-    product: 'Gearbox Housing Casing'
-  }
-];
+function httpError(message, status, code) {
+  const error = new Error(message);
+  error.status = status;
+  error.code = code;
+  return error;
+}
 
-// Initialize seed data
-INITIAL_SCHEDULES.forEach((sched) => schedulesStore.set(sched.id, { ...sched }));
-
-/**
- * Start a scheduled audit (moves status from PLANNED to IN_PROGRESS)
- */
-function startSchedule(scheduleId, currentUser = { id: 'usr-bhava' }) {
-  const schedule = schedulesStore.get(scheduleId);
+async function startSchedule(scheduleId, currentUser) {
+  const schedule = await prisma.schedule.findUnique({
+    where: { id: scheduleId }
+  });
 
   if (!schedule) {
-    const error = new Error(`Schedule '${scheduleId}' not found`);
-    error.status = 404;
-    error.code = 'NOT_FOUND';
-    throw error;
+    throw httpError('Schedule not found', 404, 'NOT_FOUND');
   }
 
-  // 409 Conflict if already DONE
+  if (schedule.auditorId !== currentUser.id) {
+    throw httpError('Only the assigned auditor can start this schedule', 403, 'FORBIDDEN');
+  }
+
   if (schedule.status === 'DONE') {
-    const error = new Error(`Schedule '${scheduleId}' is already marked as DONE and cannot be restarted`);
-    error.status = 409;
-    error.code = 'CONFLICT';
-    throw error;
+    throw httpError('Schedule is already completed', 409, 'CONFLICT');
   }
 
-  // Auditor authorization check
-  if (currentUser && currentUser.id && schedule.auditorId !== currentUser.id) {
-    const error = new Error(`Unauthorized: Only assigned auditor '${schedule.auditorId}' can start this schedule`);
-    error.status = 403;
-    error.code = 'FORBIDDEN';
-    throw error;
-  }
-
-  // Idempotent: if already IN_PROGRESS, return current schedule
   if (schedule.status === 'IN_PROGRESS') {
     return { schedule, idempotent: true };
   }
 
-  // Update status to IN_PROGRESS
-  schedule.status = 'IN_PROGRESS';
-  schedule.startedAt = new Date().toISOString();
-  schedulesStore.set(scheduleId, schedule);
+  const updated = await prisma.schedule.update({
+    where: { id: scheduleId },
+    data: { status: 'IN_PROGRESS' }
+  });
 
-  return { schedule, idempotent: false };
+  return { schedule: updated, idempotent: false };
 }
 
-/**
- * Creates an inspection with idempotency and auto-raises NC tickets
- */
-function createInspection({ clientId, scheduleId, items }, currentUser = { id: 'usr-bhava' }) {
-  // IDEMPOTENCY CHECK
-  if (clientIdIndex.has(clientId)) {
-    const existing = clientIdIndex.get(clientId);
+async function createInspection({ clientId, scheduleId, items }, currentUser) {
+  if (!currentUser?.id) {
+    throw httpError('Authentication required', 401, 'UNAUTHORIZED');
+  }
+
+  // Return the existing submission for an idempotent retry.
+  const existing = await prisma.inspection.findUnique({
+    where: { clientId },
+    include: { items: { include: { evidence: true } }, ncs: true }
+  });
+
+  if (existing) {
     return {
-      inspection: existing.inspection,
+      inspection: existing,
       ncs: existing.ncs,
       isDuplicate: true
     };
   }
 
-  // Verify schedule exists
-  const schedule = schedulesStore.get(scheduleId);
-  if (!schedule) {
-    const error = new Error(`Schedule '${scheduleId}' not found`);
-    error.status = 404;
-    error.code = 'NOT_FOUND';
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const schedule = await tx.schedule.findUnique({
+        where: { id: scheduleId },
+        include: {
+          plan: {
+            include: {
+              line: {
+                include: { owner: true }
+              }
+            }
+          }
+        }
+      });
+
+      if (!schedule) {
+        throw httpError('Schedule not found', 404, 'NOT_FOUND');
+      }
+
+      if (schedule.auditorId !== currentUser.id) {
+        throw httpError('Only the assigned auditor can submit this inspection', 403, 'FORBIDDEN');
+      }
+
+      if (schedule.status === 'DONE' || schedule.status === 'MISSED') {
+        throw httpError('This schedule cannot accept an inspection', 409, 'CONFLICT');
+      }
+
+      const evidenceIds = [...new Set(items.flatMap((item) => item.evidenceIds || []))];
+
+      if (evidenceIds.length) {
+        const evidence = await tx.evidence.findMany({
+          where: {
+            id: { in: evidenceIds },
+            uploadedById: currentUser.id
+          },
+          select: { id: true }
+        });
+
+        if (evidence.length !== evidenceIds.length) {
+          throw httpError(
+            'One or more evidence records are missing or do not belong to this auditor',
+            400,
+            'INVALID_EVIDENCE'
+          );
+        }
+      }
+
+      const inspection = await tx.inspection.create({
+        data: {
+          clientId,
+          scheduleId,
+          items: {
+            create: items.map((item) => ({
+              checklistItemId: item.checklistItemId,
+              result: item.result,
+              severity: item.result === 'FAIL' ? item.severity : null,
+              remark: item.remark || '',
+              ...(item.evidenceIds?.length
+                ? {
+                    evidence: {
+                      connect: item.evidenceIds.map((id) => ({ id }))
+                    }
+                  }
+                : {})
+            }))
+          }
+        },
+        include: {
+          items: { include: { evidence: true } },
+          schedule: true
+        }
+      });
+
+      const ncs = await createNcsFromInspection(
+        inspection,
+        tx,
+        schedule
+      );
+
+      await tx.schedule.update({
+        where: { id: scheduleId },
+        data: { status: 'DONE' }
+      });
+
+      return {
+        inspection,
+        ncs,
+        isDuplicate: false
+      };
+    });
+  } catch (error) {
+    // Handle a simultaneous retry with the same clientId.
+    if (error.code === 'P2002') {
+      const duplicate = await prisma.inspection.findUnique({
+        where: { clientId },
+        include: { items: { include: { evidence: true } }, ncs: true }
+      });
+
+      if (duplicate) {
+        return {
+          inspection: duplicate,
+          ncs: duplicate.ncs,
+          isDuplicate: true
+        };
+      }
+    }
+
     throw error;
   }
-
-  // Transaction: Save inspection + items, update schedule to DONE
-  const now = new Date();
-  const inspectionId = `insp-${Date.now()}`;
-
-  const inspectionRecord = {
-    id: inspectionId,
-    clientId,
-    scheduleId,
-    submittedAt: now.toISOString(),
-    auditorId: currentUser?.id || schedule.auditorId || 'usr-bhava',
-    line: schedule.line,
-    department: schedule.department,
-    product: schedule.product,
-    auditType: schedule.auditType,
-    shift: schedule.shift,
-    items: items.map((item, idx) => ({
-      id: `insp-item-${Date.now()}-${idx + 1}`,
-      inspectionId,
-      checklistItemId: item.checklistItemId,
-      result: item.result,
-      severity: item.result === 'FAIL' ? item.severity : null,
-      remark: item.result === 'FAIL' ? (item.remark || '').trim() : '',
-      evidenceIds: item.evidenceIds || []
-    }))
-  };
-
-  // Atomically mark schedule as DONE
-  schedule.status = 'DONE';
-  schedule.completedAt = now.toISOString();
-  schedulesStore.set(scheduleId, schedule);
-
-  // Save inspection
-  inspectionsStore.set(inspectionId, inspectionRecord);
-
-  // Auto-raise NCs via Linga's contract function
-  const ncs = createNcsFromInspection(inspectionRecord);
-
-  // Cache by clientId for idempotent replay
-  const result = {
-    inspection: inspectionRecord,
-    ncs,
-    isDuplicate: false
-  };
-  clientIdIndex.set(clientId, result);
-
-  return result;
 }
 
-/**
- * Retrieve inspection by ID
- */
-function getInspectionById(id) {
-  const inspection = inspectionsStore.get(id);
+async function getInspectionById(id) {
+  const inspection = await prisma.inspection.findUnique({
+    where: { id },
+    include: {
+      items: {
+        include: {
+          checklistItem: true,
+          evidence: true
+        }
+      },
+      ncs: true,
+      schedule: {
+        include: {
+          auditor: { select: { id: true, name: true, email: true } },
+          plan: { include: { line: true } }
+        }
+      }
+    }
+  });
+
   if (!inspection) {
-    const error = new Error(`Inspection '${id}' not found`);
-    error.status = 404;
-    error.code = 'NOT_FOUND';
-    throw error;
+    throw httpError('Inspection not found', 404, 'NOT_FOUND');
   }
+
   return inspection;
 }
 
-/**
- * List schedules assigned to an auditor
- */
-function getSchedulesByAuditor(auditorId = 'usr-bhava') {
-  return Array.from(schedulesStore.values()).filter(
-    (s) => !auditorId || s.auditorId === auditorId
-  );
+async function getSchedulesByAuditor(auditorId) {
+  return prisma.schedule.findMany({
+    where: { auditorId },
+    orderBy: { date: 'asc' },
+    include: {
+      plan: { include: { line: true } },
+      inspection: true
+    }
+  });
 }
 
 module.exports = {
   startSchedule,
   createInspection,
   getInspectionById,
-  getSchedulesByAuditor,
-  schedulesStore,
-  inspectionsStore
+  getSchedulesByAuditor
 };
