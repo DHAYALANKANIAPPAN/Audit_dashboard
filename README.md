@@ -14,7 +14,6 @@ AuditPulse 360 transforms manufacturing product and revalidation audits from pap
 - **Akshiya:** Analytics dashboard, KPI calculation engine, audit history search, PDF/Excel compliance exports, demo data.
 
 ---
-
 ## 🛠️ Tech Stack
 - **Frontend:** Next.js 14 (App Router) + Tailwind CSS + PWA (Service Worker + IndexedDB)
 - **Backend:** Node.js + Express REST API
