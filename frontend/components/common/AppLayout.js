@@ -110,30 +110,30 @@ export default function AppLayout({ children }) {
   const visibleNav = NAV_ITEMS.filter((item) => item.roles.includes(userRole));
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 flex">
+    <div className="min-h-screen bg-[#FBF7F0] text-[#2B1810] flex">
       {/* Sidebar */}
-      <aside className="w-64 bg-slate-950 border-r border-slate-800 flex flex-col shrink-0">
+      <aside className="w-64 bg-[#2B1810] border-r border-[#3E2317] flex flex-col shrink-0 text-[#E2D5C3]">
         {/* Brand */}
-        <div className="p-5 border-b border-slate-800 flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center font-bold text-white shadow-md shadow-blue-500/20">
+        <div className="p-5 border-b border-[#3E2317] flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-[#C85A32] flex items-center justify-center font-bold text-white shadow-md shadow-[#C85A32]/30">
             ⚡
           </div>
           <div>
-            <h2 className="font-bold text-base text-white tracking-tight">AuditPulse 360</h2>
-            <p className="text-[11px] text-blue-400 font-medium">Quality 4.0 Platform</p>
+            <h2 className="font-bold text-base text-[#FBF7F0] tracking-tight">AuditPulse 360</h2>
+            <p className="text-[11px] text-[#DC8567] font-medium tracking-wide uppercase">Quality 4.0 Platform</p>
           </div>
         </div>
 
         {/* User Card */}
         {mounted && user && (
-          <div className="p-4 mx-3 my-3 bg-slate-900/80 rounded-xl border border-slate-800">
+          <div className="p-4 mx-3 my-3 bg-[#1A0E09]/70 rounded-xl border border-[#3E2317]">
             <div className="flex items-center justify-between mb-1">
-              <span className="text-xs font-semibold text-white truncate">{user.name}</span>
-              <span className="text-[10px] px-1.5 py-0.5 rounded font-mono font-medium bg-blue-500/20 text-blue-400 border border-blue-500/30">
+              <span className="text-xs font-semibold text-[#FBF7F0] truncate">{user.name}</span>
+              <span className="text-[10px] px-2 py-0.5 rounded font-mono font-medium bg-[#C85A32]/20 text-[#DC8567] border border-[#C85A32]/40">
                 {user.role}
               </span>
             </div>
-            <p className="text-[11px] text-slate-400 truncate">{user.email}</p>
+            <p className="text-[11px] text-[#D5BCAB] truncate">{user.email}</p>
           </div>
         )}
 
@@ -147,8 +147,8 @@ export default function AppLayout({ children }) {
                 href={item.href}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${
                   isActive
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+                    ? 'bg-[#C85A32] text-white shadow-md shadow-[#C85A32]/30 font-semibold'
+                    : 'text-[#D5BCAB] hover:text-[#FBF7F0] hover:bg-[#3E2317]'
                 }`}
               >
                 {item.icon}
@@ -159,10 +159,10 @@ export default function AppLayout({ children }) {
         </nav>
 
         {/* Footer Logout */}
-        <div className="p-3 border-t border-slate-800">
+        <div className="p-3 border-t border-[#3E2317]">
           <button
             onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition border border-transparent hover:border-rose-500/20"
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-[#D5BCAB] hover:text-[#DC8567] hover:bg-[#3E2317] transition border border-transparent"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -173,7 +173,7 @@ export default function AppLayout({ children }) {
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col min-w-0 bg-slate-900 overflow-y-auto">
+      <main className="flex-1 flex flex-col min-w-0 bg-[#FBF7F0] overflow-y-auto">
         {children}
       </main>
     </div>

@@ -527,7 +527,7 @@ export default function ChecklistInspectionPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 pb-28">
+    <div className="min-h-screen bg-[#FBF7F0] text-[#2B1810] pb-28">
       {/* Toast Alert */}
       {toastMessage && (
         <Toast
@@ -538,20 +538,20 @@ export default function ChecklistInspectionPage() {
       )}
 
       {/* Sticky Top Header */}
-      <header className="sticky top-0 z-40 bg-white border-b border-slate-200 px-4 py-3 shadow-sm">
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-sm border-b border-[#EFE7DB] px-4 py-3 shadow-sm">
         <div className="max-w-3xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link
               href="/inspect"
-              className="w-9 h-9 rounded-xl border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-100 transition-colors"
+              className="w-9 h-9 rounded-xl border border-[#EFE7DB] flex items-center justify-center text-[#2B1810] hover:bg-[#F5EFEB] transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
             </Link>
             <div>
-              <h1 className="text-base font-bold text-slate-900 leading-tight">
+              <h1 className="text-base font-bold text-[#2B1810] leading-tight">
                 {schedule?.product || 'Shop-Floor Checklist'}
               </h1>
-              <p className="text-xs text-slate-500 font-medium">
+              <p className="text-xs text-[#6E442F] font-medium">
                 {schedule?.line} &bull; Shift {schedule?.shift}
               </p>
             </div>
@@ -562,9 +562,9 @@ export default function ChecklistInspectionPage() {
               className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
                 isOnline
                   ? queuedCount > 0
-                    ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                    : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                  : 'bg-amber-100 text-amber-800 border border-amber-300'
+                    ? 'bg-[#F9ECE6] text-[#C85A32] border border-[#F3D6C9]'
+                    : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                  : 'bg-amber-100 text-amber-900 border border-amber-300'
               }`}
             >
               {isOnline ? <Wifi className="w-3.5 h-3.5" /> : <WifiOff className="w-3.5 h-3.5" />}
@@ -581,20 +581,20 @@ export default function ChecklistInspectionPage() {
 
         {/* Sticky Progress Bar */}
         <div className="max-w-3xl mx-auto mt-3">
-          <div className="flex items-center justify-between text-xs font-semibold text-slate-600 mb-1.5">
+          <div className="flex items-center justify-between text-xs font-semibold text-[#6E442F] mb-1.5">
             <span>
-              Progress: <strong className="text-indigo-600">{answeredItems.length} / {totalItems}</strong> answered ({progressPercent}%)
+              Progress: <strong className="text-[#C85A32]">{answeredItems.length} / {totalItems}</strong> answered ({progressPercent}%)
             </span>
             <div className="flex items-center gap-2">
-              <span className="text-emerald-600 font-bold">{passedCount} Pass</span>
+              <span className="text-emerald-700 font-bold">{passedCount} Pass</span>
               <span>&bull;</span>
-              <span className="text-rose-600 font-bold">{failedCount} Fail</span>
+              <span className="text-[#C85A32] font-bold">{failedCount} Fail</span>
             </div>
           </div>
-          <div className="w-full h-2.5 bg-slate-200 rounded-full overflow-hidden shadow-inner">
+          <div className="w-full h-2.5 bg-[#EFE7DB] rounded-full overflow-hidden shadow-inner">
             <div
               className={`h-full transition-all duration-300 ${
-                progressPercent === 100 ? 'bg-emerald-500' : 'bg-indigo-600'
+                progressPercent === 100 ? 'bg-emerald-600' : 'bg-[#C85A32]'
               }`}
               style={{ width: `${progressPercent}%` }}
             />
@@ -623,32 +623,32 @@ export default function ChecklistInspectionPage() {
                 hasError
                   ? 'border-rose-400 ring-2 ring-rose-300 bg-rose-50/20'
                   : isFailed
-                  ? 'border-rose-300 bg-rose-50/10'
+                  ? 'border-[#E9B49F] bg-[#FDF6F3]'
                   : isPassed
-                  ? 'border-emerald-200 bg-emerald-50/10'
-                  : 'border-slate-200'
+                  ? 'border-emerald-200 bg-emerald-50/20'
+                  : 'border-[#EFE7DB]'
               }`}
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-700">
+                    <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-[#F5EFEB] text-[#6E442F] border border-[#EFE7DB]">
                       #{index + 1}
                     </span>
-                    <span className="text-xs font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md">
-                      {item.category}
+                    <span className="text-xs font-semibold text-[#C85A32] bg-[#FDF6F3] border border-[#F3D6C9] px-2.5 py-0.5 rounded-md">
+                      {item.section || item.category || 'Inspection Criteria'}
                     </span>
                     {item.standard && (
-                      <span className="text-[11px] text-slate-400 font-mono hidden sm:inline">
+                      <span className="text-[11px] text-[#8A5C43] font-mono hidden sm:inline">
                         Std: {item.standard}
                       </span>
                     )}
                   </div>
-                  <h3 className="text-sm sm:text-base font-semibold text-slate-900 pt-1 leading-snug">
-                    {item.description}
+                  <h3 className="text-sm sm:text-base font-semibold text-[#2B1810] pt-1 leading-snug">
+                    {item.itemText || item.description || item.text || 'Inspection Check Criteria'}
                   </h3>
                   {item.method && (
-                    <p className="text-xs text-slate-500 font-medium">
+                    <p className="text-xs text-[#6E442F] font-medium">
                       Method: {item.method}
                     </p>
                   )}
@@ -667,14 +667,14 @@ export default function ChecklistInspectionPage() {
               </div>
 
               {/* Large Buttons: PASS & FAIL */}
-              <div className="grid grid-cols-2 gap-3 mt-4 pt-3 border-t border-slate-100">
+              <div className="grid grid-cols-2 gap-3 mt-4 pt-3 border-t border-[#EFE7DB]">
                 <button
                   type="button"
                   onClick={() => handleSelectResult(item.id, 'PASS')}
                   className={`flex items-center justify-center gap-2.5 min-h-[56px] px-4 rounded-xl font-bold text-sm sm:text-base transition-all duration-150 active:scale-[0.98] select-none ${
                     isPassed
                       ? 'bg-emerald-600 text-white shadow-md shadow-emerald-200 ring-2 ring-emerald-600 ring-offset-2'
-                      : 'bg-slate-100 text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 border border-slate-200'
+                      : 'bg-[#F5EFEB] text-[#2B1810] hover:bg-emerald-50 hover:text-emerald-700 border border-[#EFE7DB]'
                   }`}
                 >
                   <CheckCircle className={`w-5 h-5 ${isPassed ? 'text-white' : 'text-emerald-600'}`} />
@@ -686,11 +686,11 @@ export default function ChecklistInspectionPage() {
                   onClick={() => handleSelectResult(item.id, 'FAIL')}
                   className={`flex items-center justify-center gap-2.5 min-h-[56px] px-4 rounded-xl font-bold text-sm sm:text-base transition-all duration-150 active:scale-[0.98] select-none ${
                     isFailed
-                      ? 'bg-rose-600 text-white shadow-md shadow-rose-200 ring-2 ring-rose-600 ring-offset-2'
-                      : 'bg-slate-100 text-slate-700 hover:bg-rose-50 hover:text-rose-700 border border-slate-200'
+                      ? 'bg-[#C85A32] text-white shadow-md shadow-[#C85A32]/30 ring-2 ring-[#C85A32] ring-offset-2'
+                      : 'bg-[#F5EFEB] text-[#2B1810] hover:bg-[#FDF6F3] hover:text-[#C85A32] border border-[#EFE7DB]'
                   }`}
                 >
-                  <XCircle className={`w-5 h-5 ${isFailed ? 'text-white' : 'text-rose-600'}`} />
+                  <XCircle className={`w-5 h-5 ${isFailed ? 'text-white' : 'text-[#C85A32]'}`} />
                   <span>FAIL</span>
                 </button>
               </div>
@@ -856,19 +856,19 @@ export default function ChecklistInspectionPage() {
       </main>
 
       {/* Sticky Bottom Bar */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-slate-200 px-4 py-3 shadow-2xl">
+      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-[#EFE7DB] px-4 py-3 shadow-2xl">
         <div className="max-w-3xl mx-auto flex items-center justify-between gap-4">
           <div>
-            <p className="text-xs text-slate-500 font-semibold">
+            <p className="text-xs text-[#6E442F] font-semibold">
               {invalidItemIds.length === 0
                 ? 'All checklist items complete'
                 : `${invalidItemIds.length} item(s) pending`}
             </p>
-            <p className="text-sm font-bold text-slate-800">
+            <p className="text-sm font-bold text-[#2B1810]">
               {failedCount > 0 ? (
-                <span className="text-rose-600">{failedCount} Defect(s) flagged</span>
+                <span className="text-[#C85A32]">{failedCount} Defect(s) flagged</span>
               ) : (
-                <span className="text-emerald-600">Zero Defects</span>
+                <span className="text-emerald-700">Zero Defects</span>
               )}
             </p>
           </div>
@@ -879,7 +879,11 @@ export default function ChecklistInspectionPage() {
             icon={<Send className="w-4 h-4" />}
             onClick={handleReviewClick}
             disabled={isAnyPhotoUploading}
-            className="min-w-[170px]"
+            className={`min-w-[170px] ${
+              isFormValid
+                ? '!bg-[#C85A32] hover:!bg-[#B84A28] text-white shadow-lg shadow-[#C85A32]/30'
+                : '!bg-[#F5EFEB] !text-[#8A5C43] border border-[#EFE7DB]'
+            }`}
           >
             {isAnyPhotoUploading ? 'Uploading Photos...' : 'Review & Submit'}
           </Button>
