@@ -142,7 +142,7 @@ export default function InspectListPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 pb-20">
+    <div className="min-h-screen bg-[#FBF7F0] text-[#2B1810] pb-20">
       {/* Toast Notification */}
       {toastMessage && (
         <Toast
@@ -153,15 +153,15 @@ export default function InspectListPage() {
       )}
 
       {/* Top Mobile-First Header */}
-      <header className="sticky top-0 z-40 bg-white border-b border-slate-200 px-4 py-3 shadow-sm">
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-sm border-b border-[#EFE7DB] px-4 py-3 shadow-sm">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-md shadow-indigo-100">
+            <div className="w-10 h-10 rounded-xl bg-[#C85A32] flex items-center justify-center text-white shadow-md shadow-[#C85A32]/30">
               <ClipboardCheck className="w-5 h-5" />
             </div>
             <div>
-              <h1 className="text-lg font-bold text-slate-900 leading-tight">AuditPulse 360</h1>
-              <p className="text-xs text-slate-500 font-medium">Shop-Floor Inspector &bull; Bhava</p>
+              <h1 className="text-lg font-bold text-[#2B1810] leading-tight">AuditPulse 360</h1>
+              <p className="text-xs text-[#6E442F] font-medium">Shop-Floor Inspector &bull; Live Roster</p>
             </div>
           </div>
 
@@ -171,14 +171,14 @@ export default function InspectListPage() {
               className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${
                 isOnline
                   ? queuedCount > 0
-                    ? 'bg-blue-50 text-blue-700 border border-blue-200 animate-pulse'
-                    : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                  : 'bg-amber-100 text-amber-800 border border-amber-300'
+                    ? 'bg-[#F9ECE6] text-[#C85A32] border border-[#F3D6C9] animate-pulse'
+                    : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                  : 'bg-amber-100 text-amber-900 border border-amber-300'
               }`}
             >
               {isOnline ? (
                 queuedCount > 0 ? (
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin text-blue-600" />
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#C85A32]" />
                 ) : (
                   <Wifi className="w-3.5 h-3.5" />
                 )
@@ -199,38 +199,38 @@ export default function InspectListPage() {
 
       <main className="max-w-4xl mx-auto px-4 py-6 space-y-6">
         {/* Date & Shift Summary Banner */}
-        <div className="bg-gradient-to-r from-indigo-900 to-indigo-800 text-white rounded-2xl p-5 shadow-lg relative overflow-hidden">
+        <div className="bg-gradient-to-r from-[#2B1810] via-[#3E2317] to-[#2B1810] text-[#FBF7F0] rounded-2xl p-5 shadow-xl border border-[#543222] relative overflow-hidden">
           <div className="relative z-10">
-            <div className="flex items-center gap-2 text-indigo-200 text-xs font-semibold uppercase tracking-wider mb-1">
+            <div className="flex items-center gap-2 text-[#DC8567] text-xs font-semibold uppercase tracking-wider mb-1">
               <Calendar className="w-3.5 h-3.5" />
               <span>Today: {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
             </div>
-            <h2 className="text-xl sm:text-2xl font-bold">Today&apos;s Assigned Audits</h2>
-            <p className="text-xs sm:text-sm text-indigo-100 mt-1">
+            <h2 className="text-xl sm:text-2xl font-bold tracking-tight">Today&apos;s Assigned Audits</h2>
+            <p className="text-xs sm:text-sm text-[#E2D5C3] mt-1">
               Complete assigned shop-floor audits on time. Works 100% offline in dead zones.
             </p>
 
             {/* Quick Metrics */}
-            <div className="grid grid-cols-4 gap-2 mt-4 pt-4 border-t border-indigo-700/60 text-center">
+            <div className="grid grid-cols-4 gap-2 mt-4 pt-4 border-t border-[#543222] text-center">
               <div>
-                <p className="text-lg sm:text-2xl font-black">{totalCount}</p>
-                <p className="text-[10px] sm:text-xs text-indigo-200 uppercase font-semibold">Total</p>
+                <p className="text-lg sm:text-2xl font-black text-white">{totalCount}</p>
+                <p className="text-[10px] sm:text-xs text-[#D5BCAB] uppercase font-semibold">Total</p>
               </div>
               <div>
-                <p className="text-lg sm:text-2xl font-black text-amber-300">{plannedCount}</p>
-                <p className="text-[10px] sm:text-xs text-indigo-200 uppercase font-semibold">Planned</p>
+                <p className="text-lg sm:text-2xl font-black text-[#DC8567]">{plannedCount}</p>
+                <p className="text-[10px] sm:text-xs text-[#D5BCAB] uppercase font-semibold">Planned</p>
               </div>
               <div>
-                <p className="text-lg sm:text-2xl font-black text-blue-300">{inProgressCount}</p>
-                <p className="text-[10px] sm:text-xs text-indigo-200 uppercase font-semibold">In Progress</p>
+                <p className="text-lg sm:text-2xl font-black text-amber-300">{inProgressCount}</p>
+                <p className="text-[10px] sm:text-xs text-[#D5BCAB] uppercase font-semibold">In Progress</p>
               </div>
               <div>
-                <p className="text-lg sm:text-2xl font-black text-emerald-300">{completedCount}</p>
-                <p className="text-[10px] sm:text-xs text-indigo-200 uppercase font-semibold">Done</p>
+                <p className="text-lg sm:text-2xl font-black text-emerald-400">{completedCount}</p>
+                <p className="text-[10px] sm:text-xs text-[#D5BCAB] uppercase font-semibold">Done</p>
               </div>
             </div>
           </div>
-          <div className="absolute right-0 -bottom-6 opacity-10 pointer-events-none">
+          <div className="absolute right-0 -bottom-6 opacity-10 pointer-events-none text-white">
             <Sparkles className="w-48 h-48" />
           </div>
         </div>
@@ -241,10 +241,10 @@ export default function InspectListPage() {
             <button
               key={st}
               onClick={() => setFilterStatus(st)}
-              className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
+              className={`px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
                 filterStatus === st
-                  ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                  ? 'bg-[#C85A32] text-white shadow-md shadow-[#C85A32]/30 font-bold'
+                  : 'bg-white text-[#6E442F] hover:bg-[#F5EFEB] border border-[#EFE7DB]'
               }`}
             >
               {st === 'ALL' ? 'All Audits' : st === 'IN_PROGRESS' ? 'In Progress' : st.charAt(0) + st.slice(1).toLowerCase()}
@@ -275,28 +275,28 @@ export default function InspectListPage() {
               <div
                 key={item.id}
                 onClick={() => handleStartAudit(item)}
-                className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-sm hover:shadow-md hover:border-indigo-300 transition-all cursor-pointer active:scale-[0.99] flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                className="bg-white rounded-2xl border border-[#EFE7DB] p-4 sm:p-5 shadow-sm hover:shadow-md hover:border-[#DC8567] transition-all cursor-pointer active:scale-[0.99] flex flex-col sm:flex-row sm:items-center justify-between gap-4"
               >
                 <div className="space-y-2">
                   <div className="flex flex-wrap items-center gap-2">
                     {getTypeBadge(item.auditType)}
                     <Badge variant="default" size="sm">
-                      <Clock className="w-3 h-3 mr-1 text-slate-500" /> Shift {item.shift}
+                      <Clock className="w-3 h-3 mr-1 text-[#6E442F]" /> Shift {item.shift}
                     </Badge>
                     {getStatusBadge(item.status)}
                   </div>
 
                   <div>
-                    <h3 className="text-base font-bold text-slate-900">{item.product}</h3>
-                    <p className="text-xs text-slate-600 font-medium flex items-center gap-1.5 mt-0.5">
-                      <Layers className="w-3.5 h-3.5 text-slate-400" />
+                    <h3 className="text-base font-bold text-[#2B1810]">{item.product}</h3>
+                    <p className="text-xs text-[#6E442F] font-medium flex items-center gap-1.5 mt-0.5">
+                      <Layers className="w-3.5 h-3.5 text-[#8A5C43]" />
                       {item.line} &bull; {item.department}
                     </p>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between sm:justify-end gap-3 pt-3 sm:pt-0 border-t sm:border-t-0 border-slate-100">
-                  <span className="text-xs text-slate-400 font-mono">ID: {item.id}</span>
+                <div className="flex items-center justify-between sm:justify-end gap-3 pt-3 sm:pt-0 border-t sm:border-t-0 border-[#EFE7DB]">
+                  <span className="text-xs text-[#8A5C43] font-mono">ID: {item.id}</span>
                   <Button
                     size="sm"
                     variant={item.status === 'DONE' ? 'secondary' : 'primary'}
@@ -305,6 +305,7 @@ export default function InspectListPage() {
                       e.stopPropagation();
                       handleStartAudit(item);
                     }}
+                    className={item.status !== 'DONE' ? '!bg-[#C85A32] hover:!bg-[#B84A28] text-white shadow-md shadow-[#C85A32]/25' : ''}
                   >
                     {item.status === 'DONE' ? 'Review' : item.status === 'IN_PROGRESS' ? 'Resume' : 'Start Inspection'}
                   </Button>
