@@ -549,13 +549,52 @@ export const MOCK_NCS_DATA = [
 ];
 
 export const MOCK_ANALYTICS_DATA = {
+  completion: {
+    planned: 42,
+    executed: 38,
+    percent: 90.5,
+    byLine: [
+      { line: "Line 1 - Engine Assembly", planned: 15, executed: 14, percent: 93.3 },
+      { line: "Line 2 - Transmission Assembly", planned: 12, executed: 12, percent: 100 },
+      { line: "Line 3 - Paint & Coating", planned: 8, executed: 6, percent: 75.0 },
+      { line: "Line 4 - Battery Pack Assembly", planned: 7, executed: 6, percent: 85.7 },
+    ]
+  },
+  nc: {
+    total: 22,
+    open: 4,
+    inProgress: 3,
+    overdue: 2,
+    closed: 13,
+    critical: 3,
+    closureRate: 81.8
+  },
+  onTimeClosure: {
+    percent: 86.7,
+    closedOnTime: 13,
+    totalClosed: 15
+  },
+  mttcDays: 3.2,
+  aging: {
+    lt7: 4,
+    d7to15: 3,
+    d15to30: 1,
+    gt30: 1
+  },
+  recurringFailures: [
+    { item: "Cylinder bore diameter oversized", line: "Line 1 - Engine Assembly", count: 5 },
+    { item: "Fastener torque out of spec", line: "Line 1 - Engine Assembly", count: 4 },
+    { item: "Primer coating thickness variance", line: "Line 3 - Paint & Coating", count: 3 },
+    { item: "Thermal interface pad misplaced", line: "Line 4 - Battery Pack Assembly", count: 2 },
+    { item: "Obsolete workstation SOP revision", line: "Line 3 - Paint & Coating", count: 2 }
+  ],
   kpis: {
     totalPlanned: 42,
-    auditsDone: 29,
-    complianceRate: 88.6,
-    openNcs: 8,
+    auditsDone: 38,
+    complianceRate: 90.5,
+    openNcs: 9,
     criticalNcs: 3,
-    mttrDays: 4.2
+    mttrDays: 3.2
   },
   pareto: [
     { category: "Dimensional Quality", count: 8, percentage: 36.4, cumulativePercentage: 36.4 },
@@ -565,10 +604,10 @@ export const MOCK_ANALYTICS_DATA = {
     { category: "SOP & Documentation", count: 2, percentage: 9.1, cumulativePercentage: 100.0 }
   ],
   lineCompliance: [
-    { line: "Line 1 - Engine Assembly", target: 95, actual: 92.4, status: "PASS" },
-    { line: "Line 2 - Transmission", target: 95, actual: 96.8, status: "PASS" },
-    { line: "Line 3 - Paint & Coating", target: 90, actual: 83.2, status: "NEEDS_IMPROVEMENT" },
-    { line: "Line 4 - Battery Pack", target: 98, actual: 94.5, status: "PASS" }
+    { line: "Line 1 - Engine Assembly", target: 95, actual: 93.3, status: "PASS" },
+    { line: "Line 2 - Transmission Assembly", target: 95, actual: 100.0, status: "PASS" },
+    { line: "Line 3 - Paint & Coating", target: 90, actual: 75.0, status: "NEEDS_IMPROVEMENT" },
+    { line: "Line 4 - Battery Pack Assembly", target: 98, actual: 85.7, status: "PASS" }
   ],
   monthlyTrend: [
     { month: "Aug", audits: 38, ncs: 18, passRate: 84 },
